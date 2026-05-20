@@ -1,0 +1,47 @@
+# ===== Gradle (both projects) =====
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/**/build/
+
+# ===== Android =====
+*.apk
+*.aab
+*.ap_
+*.dex
+local.properties
+captures/
+.cxx/
+release/
+
+# ===== Kotlin / IntelliJ / Android Studio =====
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# ===== Spring Boot =====
+HELP.md
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# ===== Java =====
+*.class
+*.log
+hs_err_pid*
+
+# ===== VS Code =====
+.vscode/
+
+# ===== macOS =====
+.DS_Store
+
+# ===== Env / secrets =====
+.env
+.env.local
+*.pem
+
+# ===== Misc =====
+*.swp
+*.swo
