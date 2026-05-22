@@ -33,9 +33,9 @@
 **Goal:** A working proxy that takes images and returns Claude's response.
 
 - Add two endpoints:
-  - `POST /score-batch` — accepts 10 images, calls Claude Haiku, returns scores
-  - `POST /cohesive-select` — accepts up to 20 images + pickCount, calls Claude Sonnet, returns selected IDs
-- Wire up `ANTHROPIC_API_KEY` via environment variable, read into a `@ConfigurationProperties` class
+  - `POST /score-batch` — accepts 10 images, calls GPT-4o mini (gpt-4o-mini), returns scores
+  - `POST /cohesive-select` — accepts up to 20 images + pickCount, calls GPT-4.1 (gpt-4.1), returns selected IDs
+- Wire up `OPENAI_API_KEY` via environment variable, read into a `@ConfigurationProperties` class
 - Use Spring's `WebClient` (reactive HTTP) to call Anthropic's API
 - Structured JSON logging via Logback config
 - Test with `curl` and a couple of sample images
