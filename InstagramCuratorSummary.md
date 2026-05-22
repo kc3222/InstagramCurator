@@ -1,6 +1,6 @@
 # 📱 Instagram Curator — Final Architecture
 
-An Android app that uses on-device intelligence + Claude Vision AI to pick the best **N photos (user-selected, 1–10)** from up to **100 camera photos**, formatted for Instagram Story (9:16 vertical).
+An Android app that uses on-device intelligence + OpenAI Vision AI to pick the best **N photos (user-selected, 1–10)** from up to **100 camera photos**, formatted for Instagram Story (9:16 vertical).
 
 ---
 
@@ -13,9 +13,9 @@ Up to 100 camera photos selected by user
         ↓
 [2] pHash dedup + face scoring   ~85 → ~40
         ↓
-[3] Claude Haiku batch scoring   40 → top 20
+[3] GPT-4o-mini batch scoring    40 → top 20
         ↓
-[4] Claude Sonnet cohesive pick  20 → final N (1–10)
+[4] GPT-4.1 cohesive pick        20 → final N (1–10)
         ↓
 Display in 9:16 story cards → save to camera roll
 ```
@@ -58,7 +58,7 @@ Eliminates near-duplicates while keeping the best version of each moment:
   - **Exposure quality** (histogram clipping) — 10%
 - Keep only the winner per cluster
 
-### [3] Claude Haiku Batch Scoring (40 → top 20)
+### [3] GPT-4o-mini Batch Scoring (40 → top 20)
 
 Cheap, fast subjective scoring on the survivors:
 
@@ -67,12 +67,12 @@ Cheap, fast subjective scoring on the survivors:
 - Each image scored 1–10 on: composition, lighting, subject clarity, visual energy, color vibrancy
 - Keep the top 20 scorers
 
-### [4] Claude Sonnet Cohesive Selection (20 → N)
+### [4] GPT-4.1 Cohesive Selection (20 → N)
 
 Higher-resolution final curation:
 
 - Re-compress top 20 to 1200px JPEG quality 85
-- One API call to Sonnet with all 20 + user's requested `pickCount`
+- One API call to GPT-4.1 with all 20 + user's requested `pickCount`
 - Pick the best N photos as a *cohesive set* — variety, flow, scroll-stopping power
 - Return selected IDs + reasoning
 
@@ -89,8 +89,8 @@ Higher-resolution final curation:
 | **Perceptual hashing** | `JImageHash` Kotlin library |
 | **Face / eyes / smile** | Google ML Kit Face Detection (free, on-device) |
 | **Backend** | Kotlin + Spring Boot, hosted on Railway (later: AWS App Runner) |
-| **AI Pass 1** | Claude Haiku (`claude-haiku-4-5`) |
-| **AI Pass 2** | Claude Sonnet (`claude-sonnet-4-6`) |
+| **AI Pass 1** | OpenAI GPT-4o-mini (`gpt-4o-mini`) |
+| **AI Pass 2** | OpenAI GPT-4.1 (`gpt-4.1`) |
 | **Output** | Save selected photos to camera roll via MediaStore |
 
 ---
@@ -100,8 +100,8 @@ Higher-resolution final curation:
 **Per analysis of 100 photos:**
 
 - Local stages [1] + [2]: ~3-5 seconds, free
-- Claude Haiku Pass 1: ~5-8 seconds, ~$0.04
-- Claude Sonnet Pass 2: ~5-8 seconds, ~$0.05
+- GPT-4o-mini Pass 1: ~5-8 seconds, ~$0.04
+- GPT-4.1 Pass 2: ~5-8 seconds, ~$0.05
 - **Total: ~15-20 seconds, ~$0.09 per run**
 
 ---
@@ -109,8 +109,8 @@ Higher-resolution final curation:
 ## 🎯 Design Principles
 
 - **Heavy lifting happens on-device** — sharpness, dedup, face scoring run locally. Free, private, fast.
-- **AI does only what AI is good at** — by the time Claude sees photos, every one is sharp and non-duplicate. Claude focuses on *subjective* judgment (composition, energy, flow).
-- **Two-tier AI** — Haiku grunt-works the scoring, Sonnet handles the nuanced final curation.
+- **AI does only what AI is good at** — by the time the model sees photos, every one is sharp and non-duplicate. The model focuses on *subjective* judgment (composition, energy, flow).
+- **Two-tier AI** — GPT-4o-mini grunt-works the scoring, GPT-4.1 handles the nuanced final curation.
 - **Backend is a thin proxy** — only exists to protect the API key. No data stored.
 - **User controls the output** — pick exactly 1 to 10 photos.
 
@@ -129,8 +129,8 @@ instagram-curator/
 ## 🔑 Key Architectural Decisions Log
 
 1. **Android-only Kotlin native** — chosen over Flutter for performance and Android-specific ecosystem (ML Kit, MediaStore, Photo Picker API)
-2. **Local pre-filtering before AI** — eliminates obvious-bad images and duplicates locally so Claude only sees worthwhile candidates
-3. **Two-tier AI (Haiku → Sonnet)** — cheap model for scoring, expensive model for nuanced final curation
+2. **Local pre-filtering before AI** — eliminates obvious-bad images and duplicates locally so the model only sees worthwhile candidates
+3. **Two-tier AI (GPT-4o-mini → GPT-4.1)** — cheap model for scoring, capable model for nuanced final curation
 4. **Backend as thin proxy** — protects the API key, no data storage, no auth (personal tool)
 5. **100-photo input cap** — keeps processing time under 20 seconds and cost under $0.10 per run
 6. **User-controlled output (1–10)** — flexibility for different reel formats

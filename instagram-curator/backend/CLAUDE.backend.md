@@ -1,6 +1,6 @@
 # backend/CLAUDE.md
 
-Spring Boot proxy to the Anthropic API. Read alongside the repo-root `CLAUDE.md`.
+Spring Boot proxy to the OpenAI API. Read alongside the repo-root `CLAUDE.md`.
 
 ## Stack pins
 
@@ -16,42 +16,41 @@ Don't bump these casually — Spring Boot, Kotlin, and AGP have tight compatibil
 ```
 src/main/kotlin/com/instacurator/backend/
 ├── BackendApplication.kt    # @SpringBootApplication entry point
-└── HealthController.kt      # /health endpoint
+├── HealthController.kt      # /health endpoint
+├── ScoringController.kt     # /score-batch, /cohesive-select + public DTOs
+├── OpenAiClient.kt          # RestClient wrapper around the OpenAI API
+├── OpenAiProperties.kt      # @ConfigurationProperties("openai") — key + model IDs
+└── ApiExceptionHandler.kt   # @RestControllerAdvice — 400/502 mapping
 ```
-
-When adding new endpoints in Phase 1, follow this structure:
-
-- `ScoringController.kt` — REST endpoints (`/score-batch`, `/cohesive-select`)
-- `AnthropicClient.kt` — WebClient-based call wrapper around the Anthropic API
-- `AnthropicConfig.kt` — `@ConfigurationProperties("anthropic")` holder for the key + model IDs
 
 Keep it flat. No premature service/repository/dto subpackages.
 
 ## HTTP client
 
-Use Spring's reactive `WebClient` for outbound calls to `api.anthropic.com`, not `RestTemplate` (deprecated) and not OkHttp (extra dep). Already implied by the Spring Web starter.
+Use Spring's `RestClient` for outbound calls to `api.openai.com`, not `RestTemplate` (deprecated), not `WebClient` (needs the extra `spring-webflux` dependency), and not OkHttp (extra dep). `RestClient` ships with the existing `spring-boot-starter-web`.
 
-## Anthropic API call shape
+## OpenAI API call shape
 
-Outbound calls go to `https://api.anthropic.com/v1/messages`. Required headers:
+Outbound calls go to `https://api.openai.com/v1/chat/completions`. Required headers:
 
-- `x-api-key: $ANTHROPIC_API_KEY`
-- `anthropic-version: 2023-06-01`
+- `Authorization: Bearer $OPENAI_API_KEY`
 - `content-type: application/json`
 
-Images go as base64 in the `content` array as `type: image` blocks. The Android app sends already-compressed JPEG bytes; backend forwards them base64-encoded without re-processing.
+Images go in the message `content` array as `image_url` blocks holding a `data:image/jpeg;base64,<bytes>` data URI. The Android app sends already-compressed JPEG bytes; the backend forwards them base64-encoded without re-processing.
+
+Both endpoints use **structured outputs** — a `response_format` of type `json_schema` with `strict: true` — so OpenAI returns schema-validated JSON, not free text.
 
 ## Endpoint contracts (Phase 1)
 
 **`POST /score-batch`**
 - Request: `{ "images": [{ "id": "abc", "data": "<base64 jpeg>" }, ...] }` (up to 10)
 - Response: `{ "scores": [{ "id": "abc", "score": 7.2 }, ...] }`
-- Calls Haiku once per request.
+- Calls `gpt-4o-mini` once per request.
 
 **`POST /cohesive-select`**
 - Request: `{ "images": [...up to 20...], "pickCount": 6 }`
 - Response: `{ "selectedIds": ["abc", "def", ...], "reasoning": "..." }`
-- Calls Sonnet once.
+- Calls `gpt-4.1` once.
 
 Keep request/response DTOs as Kotlin `data class`es in the controller file for now. If they grow past ~50 lines, split into `Dtos.kt`.
 
@@ -59,7 +58,7 @@ Keep request/response DTOs as Kotlin `data class`es in the controller file for n
 
 Spring reads `application.properties`:
 - `server.port=${PORT:8080}` — honors Railway's injected `$PORT`, falls back to 8080 locally
-- `ANTHROPIC_API_KEY` is read via `@ConfigurationProperties`, never hardcoded
+- `OPENAI_API_KEY` is read via `@ConfigurationProperties` (prefix `openai`), never hardcoded
 
 ## Run / build
 
@@ -80,6 +79,6 @@ Default Logback config is fine for Phase 1. Structured JSON logging is on the Ph
 ## Common mistakes to avoid
 
 - Don't use `@RestController` and `@Controller` interchangeably — always `@RestController` here (JSON only).
-- Don't catch `Exception` broadly in controllers; let Spring's default error handling produce the 500. Wrap only specific Anthropic error responses to map them to meaningful HTTP statuses.
+- Don't catch `Exception` broadly in controllers; let Spring's default error handling produce the 500. Wrap only specific OpenAI error responses to map them to meaningful HTTP statuses.
 - Don't add `@CrossOrigin` annotations — the Android app is a native client, not a browser, CORS is irrelevant.
 - Don't add request/response logging filters that log full bodies — see "never log image bytes" above.
