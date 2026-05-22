@@ -1,0 +1,12 @@
+# Production profile — loaded when SPRING_PROFILES_ACTIVE=production (set in Railway/AWS).
+# Secrets (OPENAI_API_KEY) still come from environment variables, never from this file.
+
+logging:
+  level:
+    root: WARN
+    com.instacurator.backend: INFO
+
+management:
+  endpoint:
+    health:
+      show-details: never
