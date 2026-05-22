@@ -59,6 +59,35 @@ This is the biggest phase. Test it standalone before connecting to the backend.
 
 ---
 
+## Phase 2A: Android — Photo Picker + UI Shell `[Android Studio]` (~3 hours)
+ 
+**Goal:** User can pick photos, set output count, and see thumbnails. No pipeline logic yet.
+ 
+- Integrate Android Photo Picker API (`PickMultipleVisualMedia`), hard cap at 100
+- Show running count: "X of 100 photos selected"
+- Add output count stepper (1–10, default 6): "Photos to pick: N"
+- `SelectedPhotosGrid` composable — `LazyVerticalGrid` with Coil thumbnails, tap to deselect
+- `MainViewModel` (Hilt) holding `selectedUris` and `pickCount`
+- "Analyze" button disabled until at least 1 photo is selected
+Verify photo selection and grid display are solid before touching any native libs.
+ 
+---
+ 
+## Phase 2B: Android — Local Filtering Pipeline `[Android Studio]` (~5 hours)
+ 
+**Goal:** On-device filters whittle selected photos down to ~40 candidates.
+ 
+- Add `PipelineProcessor` class (Hilt-injected) with `suspend fun process(uris: List<Uri>): List<Uri>`
+- **Stage 1 — Sharpness filter:** Laplacian variance via OpenCV for Android on downscaled bitmaps, threshold 100.0
+- **Stage 2 — pHash dedup:** JImageHash clustering (Hamming distance < 10), score each cluster candidate on the 50/25/15/10 split (sharpness / eyes open / smile / exposure), keep the winner
+- **Stage 3 — Face scoring:** ML Kit Face Detection (`PERFORMANCE_MODE_ACCURATE`, `CLASSIFY_ALL_LANDMARKS`) for eyes-open and smile probabilities
+- Expose `pipelineState: StateFlow<PipelineState>` — sealed class `Idle | Running(stage, progress) | Done(candidates) | Error(msg)`
+- HomeScreen shows progress indicator with current stage name while running
+- **Debug screen:** after pipeline completes, navigate to a grid showing surviving candidates with composite score overlaid as a badge
+Note: OpenCV `.so` native libs must be manually added to `app/src/main/jniLibs/` before building. Don't proceed to Phase 3 until the debug screen shows sensible filtering results on real photos.
+
+---
+
 ## Phase 3: Wire Up Claude `[Android Studio]` (~4 hours)
 
 **Goal:** End-to-end pipeline working.
