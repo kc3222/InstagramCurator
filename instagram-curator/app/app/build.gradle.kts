@@ -1,6 +1,8 @@
 plugins {
 	id("com.android.application")
 	id("org.jetbrains.kotlin.android")
+	id("com.google.dagger.hilt.android")
+	id("com.google.devtools.ksp")
 }
 
 android {
@@ -17,6 +19,11 @@ android {
 		testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 		vectorDrawables {
 			useSupportLibrary = true
+		}
+
+		// Restrict to arm64-v8a during dev to keep OpenCV's native libs lean.
+		ndk {
+			abiFilters += listOf("arm64-v8a")
 		}
 	}
 
@@ -73,6 +80,19 @@ dependencies {
 	implementation("androidx.compose.material3:material3")
 
 	implementation("io.coil-kt:coil-compose:2.7.0")
+
+	// Hilt
+	implementation("com.google.dagger:hilt-android:2.52")
+	ksp("com.google.dagger:hilt-compiler:2.52")
+	implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
+
+	// StateFlow.collectAsStateWithLifecycle()
+	implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
+
+	// Phase 2B pipeline
+	implementation("org.opencv:opencv:4.10.0")
+	implementation("com.google.mlkit:face-detection:16.1.7")
+	implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
 
 	debugImplementation("androidx.compose.ui:ui-tooling")
 	debugImplementation("androidx.compose.ui:ui-test-manifest")

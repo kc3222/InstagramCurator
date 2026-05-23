@@ -8,33 +8,40 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.instacurator.app.pipeline.PipelineState
 import com.instacurator.app.ui.theme.InstaCuratorTheme
 import com.instacurator.app.viewmodel.MAX_PHOTOS
 import com.instacurator.app.viewmodel.MainViewModel
 import com.instacurator.app.viewmodel.PICK_RANGE
 
 /**
- * Home screen: pick photos, review the selection, choose how many to curate.
- * Stateful entry point — owns the picker launcher and delegates rendering to
- * the stateless [HomeScreenContent] so the screen stays preview-able.
+ * Home screen: pick photos, review the selection, choose how many to curate,
+ * launch the pipeline. While the pipeline runs we replace the body with a
+ * progress indicator. The Done state is handled one level up in MainActivity.
  */
 @Composable
-fun HomeScreen(viewModel: MainViewModel = viewModel()) {
+fun HomeScreen(viewModel: MainViewModel = hiltViewModel()) {
 	val context = LocalContext.current
+	val pipelineState by viewModel.pipelineState.collectAsStateWithLifecycle()
 
 	val pickMediaLauncher = rememberLauncherForActivityResult(
 		ActivityResultContracts.PickMultipleVisualMedia()
@@ -46,6 +53,12 @@ fun HomeScreen(viewModel: MainViewModel = viewModel()) {
 		}
 	}
 
+	val state = pipelineState
+	if (state is PipelineState.Running) {
+		PipelineProgress(stage = state.stage, progress = state.progress)
+		return
+	}
+
 	HomeScreenContent(
 		selectedUris = viewModel.selectedUris,
 		pickCount = viewModel.pickCount,
@@ -54,11 +67,33 @@ fun HomeScreen(viewModel: MainViewModel = viewModel()) {
 				PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
 			)
 		},
-		onAnalyze = { /* Pipeline + backend call land in Phase 3. */ },
+		onAnalyze = viewModel::runPipeline,
 		onIncrement = viewModel::incrementPickCount,
 		onDecrement = viewModel::decrementPickCount,
 		onRemovePhoto = viewModel::removeUri,
+		errorMessage = (state as? PipelineState.Error)?.msg,
 	)
+}
+
+@Composable
+private fun PipelineProgress(stage: String, progress: Float) {
+	Column(
+		modifier = Modifier
+			.fillMaxSize()
+			.padding(32.dp),
+		verticalArrangement = Arrangement.Center,
+		horizontalAlignment = Alignment.CenterHorizontally,
+	) {
+		Text(
+			text = "$stage…",
+			style = MaterialTheme.typography.titleMedium,
+		)
+		Spacer(Modifier.height(16.dp))
+		LinearProgressIndicator(
+			progress = { progress.coerceIn(0f, 1f) },
+			modifier = Modifier.fillMaxWidth(),
+		)
+	}
 }
 
 @Composable
@@ -70,6 +105,7 @@ fun HomeScreenContent(
 	onIncrement: () -> Unit,
 	onDecrement: () -> Unit,
 	onRemovePhoto: (Uri) -> Unit,
+	errorMessage: String? = null,
 ) {
 	Column(
 		modifier = Modifier
@@ -126,6 +162,15 @@ fun HomeScreenContent(
 				.weight(1f)
 				.padding(vertical = 16.dp),
 		)
+
+		if (errorMessage != null) {
+			Text(
+				text = "Error: $errorMessage",
+				color = MaterialTheme.colorScheme.error,
+				style = MaterialTheme.typography.bodySmall,
+				modifier = Modifier.padding(bottom = 8.dp),
+			)
+		}
 
 		Button(
 			onClick = onAnalyze,

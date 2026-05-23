@@ -6,6 +6,15 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.instacurator.app.pipeline.PipelineProcessor
+import com.instacurator.app.pipeline.PipelineState
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 /** Hard cap on photos selected per run. */
 const val MAX_PHOTOS = 100
@@ -17,27 +26,28 @@ const val DEFAULT_PICK_COUNT = 6
 val PICK_RANGE = 1..10
 
 /**
- * Holds the home-screen state: which photos the user picked and how many the
- * curator should return. Plain ViewModel — no DI framework (see app/CLAUDE.md).
+ * Holds home-screen state (selected photos, pickCount) and orchestrates the
+ * on-device pipeline through [PipelineProcessor].
  */
-class MainViewModel : ViewModel() {
+@HiltViewModel
+class MainViewModel @Inject constructor(
+	private val processor: PipelineProcessor,
+) : ViewModel() {
 
 	private val _selectedUris = mutableStateListOf<Uri>()
-
-	/** Photos currently selected, in pick order. Observable by Compose. */
 	val selectedUris: List<Uri> get() = _selectedUris
 
-	/** How many photos the curator should pick. */
 	var pickCount by mutableIntStateOf(DEFAULT_PICK_COUNT)
 		private set
 
-	/** Replaces the selection with a fresh pick, defensively capped at MAX_PHOTOS. */
+	private val _pipelineState = MutableStateFlow<PipelineState>(PipelineState.Idle)
+	val pipelineState: StateFlow<PipelineState> = _pipelineState.asStateFlow()
+
 	fun setPickedUris(uris: List<Uri>) {
 		_selectedUris.clear()
 		_selectedUris.addAll(uris.take(MAX_PHOTOS))
 	}
 
-	/** Removes a single photo from the selection (grid tap). */
 	fun removeUri(uri: Uri) {
 		_selectedUris.remove(uri)
 	}
@@ -48,5 +58,26 @@ class MainViewModel : ViewModel() {
 
 	fun decrementPickCount() {
 		if (pickCount > PICK_RANGE.first) pickCount--
+	}
+
+	fun runPipeline() {
+		if (_pipelineState.value is PipelineState.Running) return
+		val uris = _selectedUris.toList()
+		if (uris.isEmpty()) return
+		viewModelScope.launch {
+			_pipelineState.value = PipelineState.Running("Starting", 0f)
+			try {
+				val results = processor.process(uris) { stage, progress ->
+					_pipelineState.value = PipelineState.Running(stage, progress)
+				}
+				_pipelineState.value = PipelineState.Done(results)
+			} catch (t: Throwable) {
+				_pipelineState.value = PipelineState.Error(t.message ?: "Pipeline failed")
+			}
+		}
+	}
+
+	fun resetPipeline() {
+		_pipelineState.value = PipelineState.Idle
 	}
 }

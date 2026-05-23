@@ -88,7 +88,7 @@ Note: OpenCV `.so` native libs must be manually added to `app/src/main/jniLibs/`
 
 ---
 
-## Phase 3: Wire Up Claude `[Android Studio]` (~4 hours)
+## Phase 3: Wire Up OpenAI `[Android Studio]` (~4 hours)
 
 **Goal:** End-to-end pipeline working.
 
