@@ -25,6 +25,14 @@ android {
 		ndk {
 			abiFilters += listOf("arm64-v8a")
 		}
+
+		// Backend base URL — replace YOUR-RAILWAY-URL with the deployed host.
+		// Trailing slash is required by Retrofit.
+		buildConfigField(
+			"String",
+			"API_BASE_URL",
+			"\"https://instagramcurator-production.up.railway.app/\""
+		)
 	}
 
 	buildTypes {
@@ -48,6 +56,8 @@ android {
 
 	buildFeatures {
 		compose = true
+		// AGP 8 disables buildConfig by default; we need it for API_BASE_URL.
+		buildConfig = true
 	}
 
 	composeOptions {
@@ -93,6 +103,15 @@ dependencies {
 	implementation("org.opencv:opencv:4.10.0")
 	implementation("com.google.mlkit:face-detection:16.1.7")
 	implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
+
+	// Phase 3 networking
+	implementation("com.squareup.retrofit2:retrofit:2.11.0")
+	implementation("com.squareup.retrofit2:converter-gson:2.11.0")
+	implementation("com.squareup.okhttp3:okhttp:4.12.0")
+	implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+
+	// Material icons for the Save FAB.
+	implementation("androidx.compose.material:material-icons-extended")
 
 	debugImplementation("androidx.compose.ui:ui-tooling")
 	debugImplementation("androidx.compose.ui:ui-test-manifest")

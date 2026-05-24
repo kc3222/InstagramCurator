@@ -7,6 +7,8 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.instacurator.app.gallery.MediaStoreSaver
+import com.instacurator.app.gallery.SaveResult
 import com.instacurator.app.pipeline.PipelineProcessor
 import com.instacurator.app.pipeline.PipelineState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -26,12 +28,14 @@ const val DEFAULT_PICK_COUNT = 6
 val PICK_RANGE = 1..10
 
 /**
- * Holds home-screen state (selected photos, pickCount) and orchestrates the
- * on-device pipeline through [PipelineProcessor].
+ * Holds home-screen state (selected photos, pickCount), drives the on-device
+ * pipeline, then auto-chains the AI pipeline. Owns the snackbar-bound saveAll
+ * path so MainActivity stays free of injected dependencies.
  */
 @HiltViewModel
 class MainViewModel @Inject constructor(
 	private val processor: PipelineProcessor,
+	private val saver: MediaStoreSaver,
 ) : ViewModel() {
 
 	private val _selectedUris = mutableStateListOf<Uri>()
@@ -61,16 +65,20 @@ class MainViewModel @Inject constructor(
 	}
 
 	fun runPipeline() {
-		if (_pipelineState.value is PipelineState.Running) return
+		if (isRunning(_pipelineState.value)) return
 		val uris = _selectedUris.toList()
 		if (uris.isEmpty()) return
+
 		viewModelScope.launch {
 			_pipelineState.value = PipelineState.Running("Starting", 0f)
 			try {
-				val results = processor.process(uris) { stage, progress ->
-					_pipelineState.value = PipelineState.Running(stage, progress)
+				val candidates = processor.process(uris) { stage, p ->
+					_pipelineState.value = PipelineState.Running(stage, p)
 				}
-				_pipelineState.value = PipelineState.Done(results)
+				val finalUris = processor.runAiPipeline(candidates, pickCount) { state ->
+					_pipelineState.value = state
+				}
+				_pipelineState.value = PipelineState.FinalResult(finalUris)
 			} catch (t: Throwable) {
 				_pipelineState.value = PipelineState.Error(t.message ?: "Pipeline failed")
 			}
@@ -80,4 +88,11 @@ class MainViewModel @Inject constructor(
 	fun resetPipeline() {
 		_pipelineState.value = PipelineState.Idle
 	}
+
+	/** Save all photos to Pictures/InstagramCurator/. Called from the FAB. */
+	suspend fun saveAll(photos: List<Uri>): SaveResult = saver.saveAll(photos)
+
+	private fun isRunning(state: PipelineState): Boolean = state is PipelineState.Running ||
+		state is PipelineState.AiScoring ||
+		state is PipelineState.AiSelecting
 }
