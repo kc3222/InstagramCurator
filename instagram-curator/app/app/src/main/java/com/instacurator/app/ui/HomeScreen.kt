@@ -36,7 +36,7 @@ import com.instacurator.app.viewmodel.PICK_RANGE
 /**
  * Home screen: pick photos, review the selection, choose how many to curate,
  * launch the pipeline. While the pipeline runs we replace the body with a
- * progress indicator. The Done state is handled one level up in MainActivity.
+ * progress indicator. The FinalResult state is handled in MainActivity.
  */
 @Composable
 fun HomeScreen(viewModel: MainViewModel = hiltViewModel()) {
@@ -53,10 +53,17 @@ fun HomeScreen(viewModel: MainViewModel = hiltViewModel()) {
 		}
 	}
 
-	val state = pipelineState
-	if (state is PipelineState.Running) {
-		PipelineProgress(stage = state.stage, progress = state.progress)
-		return
+	when (val state = pipelineState) {
+		is PipelineState.Running -> {
+			PipelineProgress(stage = state.stage, progress = state.progress); return
+		}
+		is PipelineState.AiScoring -> {
+			PipelineProgress(stage = "Scoring photos with AI", progress = state.progress); return
+		}
+		is PipelineState.AiSelecting -> {
+			PipelineProgress(stage = "Picking your final set", progress = state.progress); return
+		}
+		else -> Unit
 	}
 
 	HomeScreenContent(
@@ -71,7 +78,7 @@ fun HomeScreen(viewModel: MainViewModel = hiltViewModel()) {
 		onIncrement = viewModel::incrementPickCount,
 		onDecrement = viewModel::decrementPickCount,
 		onRemovePhoto = viewModel::removeUri,
-		errorMessage = (state as? PipelineState.Error)?.msg,
+		errorMessage = (pipelineState as? PipelineState.Error)?.msg,
 	)
 }
 
