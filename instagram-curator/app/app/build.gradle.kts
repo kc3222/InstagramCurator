@@ -1,8 +1,24 @@
+import java.util.Properties
+
 plugins {
 	id("com.android.application")
 	id("org.jetbrains.kotlin.android")
 	id("com.google.dagger.hilt.android")
 	id("com.google.devtools.ksp")
+}
+
+/**
+ * Loads a properties file from the rootProject directory (instagram-curator/app/).
+ * Returns an empty Properties if the file is missing. Used for the per-buildType
+ * backend URL split (dev.properties / prod.properties — both gitignored).
+ */
+fun loadProps(fileName: String): Properties {
+	val props = Properties()
+	val file = rootProject.file(fileName)
+	if (file.exists()) {
+		file.inputStream().use { props.load(it) }
+	}
+	return props
 }
 
 android {
@@ -26,17 +42,22 @@ android {
 			abiFilters += listOf("arm64-v8a")
 		}
 
-		// Backend base URL — replace YOUR-RAILWAY-URL with the deployed host.
-		// Trailing slash is required by Retrofit.
-		buildConfigField(
-			"String",
-			"API_BASE_URL",
-			"\"https://instagramcurator-production.up.railway.app/\""
-		)
+		// API_BASE_URL is provided per-buildType from dev.properties / prod.properties.
 	}
 
 	buildTypes {
+		debug {
+			val devUrl = loadProps("dev.properties").getProperty("apiBaseUrl")
+				?: "http://10.0.2.2:8080/"
+			buildConfigField("String", "API_BASE_URL", "\"$devUrl\"")
+		}
 		release {
+			// Fallback is a deliberately unresolvable host so release builds
+			// missing prod.properties fail fast at runtime with a clear DNS error.
+			// (We can't error() here — release config is evaluated even for debug builds.)
+			val prodUrl = loadProps("prod.properties").getProperty("apiBaseUrl")
+				?: "https://MISSING-PROD-PROPERTIES.invalid/"
+			buildConfigField("String", "API_BASE_URL", "\"$prodUrl\"")
 			isMinifyEnabled = false
 			proguardFiles(
 				getDefaultProguardFile("proguard-android-optimize.txt"),

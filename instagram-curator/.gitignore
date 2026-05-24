@@ -10,6 +10,10 @@ build/
 *.ap_
 *.dex
 local.properties
+# Per-build-type backend config (Option B). Copy from the .example templates,
+# fill in your URLs, and never commit. The .example files stay tracked.
+app/dev.properties
+app/prod.properties
 captures/
 .cxx/
 release/
