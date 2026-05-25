@@ -8,8 +8,13 @@ import org.opencv.core.Mat
 import org.opencv.core.Size
 import org.opencv.imgproc.Imgproc
 
-/** Two photos cluster as duplicates if their pHash Hamming distance is below this. */
-const val DEDUP_HAMMING_THRESHOLD = 10
+/**
+ * Two photos cluster as duplicates if their pHash Hamming distance is below this.
+ * 5 keeps near-identical shots (burst frames, tiny crops) together while letting
+ * visually distinct subjects with similar composition (e.g. different dishes on
+ * the same table) stay in separate clusters.
+ */
+const val DEDUP_HAMMING_THRESHOLD = 5
 
 /**
  * 64-bit perceptual hash based on the discrete cosine transform. Robust to
