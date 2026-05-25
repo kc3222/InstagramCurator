@@ -64,6 +64,10 @@ class MainViewModel @Inject constructor(
 		if (pickCount > PICK_RANGE.first) pickCount--
 	}
 
+	fun updatePickCount(value: Int) {
+		pickCount = value.coerceIn(PICK_RANGE.first, PICK_RANGE.last)
+	}
+
 	fun runPipeline() {
 		if (isRunning(_pipelineState.value)) return
 		val uris = _selectedUris.toList()

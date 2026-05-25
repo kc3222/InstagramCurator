@@ -13,13 +13,29 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -77,6 +93,7 @@ fun HomeScreen(viewModel: MainViewModel = hiltViewModel()) {
 		onAnalyze = viewModel::runPipeline,
 		onIncrement = viewModel::incrementPickCount,
 		onDecrement = viewModel::decrementPickCount,
+		onPickCountChange = viewModel::updatePickCount,
 		onRemovePhoto = viewModel::removeUri,
 		errorMessage = (pipelineState as? PipelineState.Error)?.msg,
 	)
@@ -111,19 +128,40 @@ fun HomeScreenContent(
 	onAnalyze: () -> Unit,
 	onIncrement: () -> Unit,
 	onDecrement: () -> Unit,
+	onPickCountChange: (Int) -> Unit,
 	onRemovePhoto: (Uri) -> Unit,
 	errorMessage: String? = null,
 ) {
+	var pickCountText by remember { mutableStateOf(pickCount.toString()) }
+	LaunchedEffect(pickCount) {
+		if (pickCountText.toIntOrNull() != pickCount) {
+			pickCountText = pickCount.toString()
+		}
+	}
+	val parsedPickCount = pickCountText.toIntOrNull()
+	val pickCountValid = parsedPickCount != null &&
+		parsedPickCount in PICK_RANGE.first..PICK_RANGE.last
+
 	Column(
 		modifier = Modifier
 			.fillMaxSize()
 			.padding(24.dp),
 		horizontalAlignment = Alignment.CenterHorizontally,
 	) {
-		Text(
-			text = "InstaCurator",
-			style = MaterialTheme.typography.headlineMedium,
-		)
+		Row(
+			verticalAlignment = Alignment.CenterVertically,
+			horizontalArrangement = Arrangement.spacedBy(8.dp),
+		) {
+			Icon(
+				imageVector = Icons.Filled.AutoAwesome,
+				contentDescription = null,
+				tint = MaterialTheme.colorScheme.primary,
+			)
+			Text(
+				text = "InstaCurator",
+				style = MaterialTheme.typography.headlineMedium,
+			)
+		}
 		Text(
 			text = "Pick up to 100 photos. Get the best ones.",
 			style = MaterialTheme.typography.bodyMedium,
@@ -131,6 +169,11 @@ fun HomeScreenContent(
 		)
 
 		Button(onClick = onPickPhotos) {
+			Icon(
+				imageVector = Icons.Filled.PhotoLibrary,
+				contentDescription = null,
+				modifier = Modifier.padding(end = 8.dp),
+			)
 			Text("Pick Photos")
 		}
 
@@ -148,18 +191,57 @@ fun HomeScreenContent(
 			OutlinedButton(
 				onClick = onDecrement,
 				enabled = pickCount > PICK_RANGE.first,
-			) { Text("–") }
+			) {
+				Icon(
+					imageVector = Icons.Filled.Remove,
+					contentDescription = "Decrease",
+				)
+			}
 
 			Text(
-				text = "Photos to pick: $pickCount",
+				text = "Photos to pick:",
 				style = MaterialTheme.typography.bodyLarge,
+			)
+
+			OutlinedTextField(
+				value = pickCountText,
+				onValueChange = { raw ->
+					val digits = raw.filter { it.isDigit() }.take(2)
+					val parsed = digits.toIntOrNull()
+					pickCountText = when {
+						parsed == null -> digits
+						parsed > PICK_RANGE.last -> PICK_RANGE.last.toString()
+						else -> digits
+					}
+					pickCountText.toIntOrNull()?.let { value ->
+						if (value in PICK_RANGE.first..PICK_RANGE.last) {
+							onPickCountChange(value)
+						}
+					}
+				},
+				singleLine = true,
+				keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+				textStyle = TextStyle(textAlign = androidx.compose.ui.text.style.TextAlign.Center),
+				modifier = Modifier.width(56.dp),
 			)
 
 			OutlinedButton(
 				onClick = onIncrement,
 				enabled = pickCount < PICK_RANGE.last,
-			) { Text("+") }
+			) {
+				Icon(
+					imageVector = Icons.Filled.Add,
+					contentDescription = "Increase",
+				)
+			}
 		}
+
+		Text(
+			text = "Enter a number between ${PICK_RANGE.first} and ${PICK_RANGE.last}",
+			style = MaterialTheme.typography.bodySmall,
+			color = MaterialTheme.colorScheme.onSurfaceVariant,
+			modifier = Modifier.padding(top = 4.dp),
+		)
 
 		SelectedPhotosGrid(
 			uris = selectedUris,
@@ -171,19 +253,34 @@ fun HomeScreenContent(
 		)
 
 		if (errorMessage != null) {
-			Text(
-				text = "Error: $errorMessage",
-				color = MaterialTheme.colorScheme.error,
-				style = MaterialTheme.typography.bodySmall,
+			Row(
+				verticalAlignment = Alignment.CenterVertically,
+				horizontalArrangement = Arrangement.spacedBy(6.dp),
 				modifier = Modifier.padding(bottom = 8.dp),
-			)
+			) {
+				Icon(
+					imageVector = Icons.Filled.ErrorOutline,
+					contentDescription = null,
+					tint = MaterialTheme.colorScheme.error,
+				)
+				Text(
+					text = "Error: $errorMessage",
+					color = MaterialTheme.colorScheme.error,
+					style = MaterialTheme.typography.bodySmall,
+				)
+			}
 		}
 
 		Button(
 			onClick = onAnalyze,
-			enabled = selectedUris.isNotEmpty(),
+			enabled = selectedUris.isNotEmpty() && pickCountValid,
 			modifier = Modifier.fillMaxWidth(),
 		) {
+			Icon(
+				imageVector = Icons.Filled.AutoAwesome,
+				contentDescription = null,
+				modifier = Modifier.padding(end = 8.dp),
+			)
 			Text("Analyze")
 		}
 	}
@@ -200,6 +297,7 @@ fun HomeScreenContentPreview() {
 			onAnalyze = {},
 			onIncrement = {},
 			onDecrement = {},
+			onPickCountChange = {},
 			onRemovePhoto = {},
 		)
 	}

@@ -15,15 +15,24 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -40,6 +49,7 @@ import com.instacurator.app.ui.theme.InstaCuratorTheme
  * Final results: vertical snap-scrolling 9:16 cards, one per selected photo,
  * with an index badge and a Save All FAB. System back returns home.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ResultsScreen(
 	photos: List<Uri>,
@@ -52,6 +62,29 @@ fun ResultsScreen(
 	Scaffold(
 		modifier = Modifier.fillMaxSize(),
 		snackbarHost = { SnackbarHost(snackbarHostState) },
+		topBar = {
+			TopAppBar(
+				title = { Text("Your Picks") },
+				navigationIcon = {
+					IconButton(onClick = onBack) {
+						Icon(
+							imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+							contentDescription = "Back",
+						)
+					}
+				},
+				actions = {
+					TextButton(onClick = onBack) {
+						Icon(
+							imageVector = Icons.Filled.Refresh,
+							contentDescription = null,
+							modifier = Modifier.padding(end = 4.dp),
+						)
+						Text("Start again")
+					}
+				},
+			)
+		},
 		floatingActionButton = {
 			ExtendedFloatingActionButton(onClick = onSaveAll) {
 				Icon(Icons.Default.Save, contentDescription = null)
@@ -91,7 +124,9 @@ private fun ResultCard(index: Int, uri: Uri) {
 			contentScale = ContentScale.Crop,
 			modifier = Modifier.fillMaxSize(),
 		)
-		Box(
+		Row(
+			verticalAlignment = Alignment.CenterVertically,
+			horizontalArrangement = Arrangement.spacedBy(4.dp),
 			modifier = Modifier
 				.align(Alignment.TopStart)
 				.padding(12.dp)
@@ -99,6 +134,12 @@ private fun ResultCard(index: Int, uri: Uri) {
 				.background(Color.Black.copy(alpha = 0.6f))
 				.padding(horizontal = 10.dp, vertical = 4.dp),
 		) {
+			Icon(
+				imageVector = Icons.Filled.AutoAwesome,
+				contentDescription = null,
+				tint = Color(0xFFFFD54F),
+				modifier = Modifier.size(14.dp),
+			)
 			Text(
 				text = "#${index + 1}",
 				color = Color.White,
