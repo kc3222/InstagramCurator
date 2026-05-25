@@ -10,6 +10,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.instacurator.app.gallery.MediaStoreSaver
 import com.instacurator.app.gallery.SaveResult
+import com.instacurator.app.pipeline.Clustering
 import com.instacurator.app.pipeline.PipelineProcessor
 import com.instacurator.app.pipeline.PipelineState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -84,9 +85,7 @@ class MainViewModel @Inject constructor(
 					_pipelineState.value = PipelineState.Running(stage, p)
 				}
 				if (!useOpenAi) {
-					val localUris = candidates
-						.sortedByDescending { it.compositeScore }
-						.take(pickCount)
+					val localUris = Clustering.selectDiverse(candidates, pickCount)
 						.map { it.uri }
 					_pipelineState.value = PipelineState.FinalResult(localUris)
 					return@launch

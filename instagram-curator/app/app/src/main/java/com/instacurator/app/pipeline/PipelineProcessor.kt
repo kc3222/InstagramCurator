@@ -80,6 +80,7 @@ class PipelineProcessor @Inject constructor(
 
 		onProgress("Removing duplicates", 0.95f)
 		val clusters = Clustering.clusterByPHash(candidates)
+		Log.i(TAG, "Funnel: ${uris.size} picked → ${candidates.size} passed sharpness → ${clusters.size} clusters")
 		clusters.map { Clustering.pickClusterWinner(it) }
 	}
 

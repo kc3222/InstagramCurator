@@ -9,8 +9,14 @@ import org.opencv.core.MatOfDouble
 import org.opencv.imgproc.Imgproc
 import kotlin.math.pow
 
-/** Photos with Laplacian variance below this are considered too blurry to keep. */
-const val SHARPNESS_THRESHOLD = 100.0
+/**
+ * Hard floor for "is this actually a usable photo at all". Laplacian variance
+ * is content-dependent (large flat areas, low-contrast subjects, intentional
+ * bokeh all suppress it on perfectly fine shots), so we only reject genuinely
+ * unusable frames here — black/blank screens, severe motion blur — and let
+ * the composite score handle relative ranking.
+ */
+const val SHARPNESS_THRESHOLD = 15.0
 
 /**
  * Laplacian variance — standard "is the image in focus?" proxy. Higher = sharper.
