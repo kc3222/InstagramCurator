@@ -91,6 +91,12 @@ android {
 		resources {
 			excludes += "/META-INF/{AL2.0,LGPL2.1}"
 		}
+		jniLibs {
+			// Required for Android 15+ 16 KB page-size devices: keep .so files
+			// uncompressed and page-aligned in the APK so the loader can mmap
+			// them at the device's page size.
+			useLegacyPackaging = false
+		}
 	}
 }
 
@@ -122,7 +128,9 @@ dependencies {
 	implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
 
 	// Phase 2B pipeline
-	implementation("org.opencv:opencv:4.10.0")
+	// 4.13.0 ships .so files with 16 KB-aligned LOAD segments (including
+	// the bundled libc++_shared.so), required for Android 15+ 16 KB devices.
+	implementation("org.opencv:opencv:4.13.0")
 	implementation("com.google.mlkit:face-detection:16.1.7")
 	implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
 
