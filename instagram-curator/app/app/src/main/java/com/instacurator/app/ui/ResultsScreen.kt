@@ -55,7 +55,9 @@ fun ResultsScreen(
 	photos: List<Uri>,
 	snackbarHostState: SnackbarHostState,
 	onSaveAll: () -> Unit,
+	onSaveOne: (Uri) -> Unit,
 	onBack: () -> Unit,
+	onStartOver: () -> Unit,
 ) {
 	BackHandler { onBack() }
 
@@ -74,7 +76,7 @@ fun ResultsScreen(
 					}
 				},
 				actions = {
-					TextButton(onClick = onBack) {
+					TextButton(onClick = onStartOver) {
 						Icon(
 							imageVector = Icons.Filled.Refresh,
 							contentDescription = null,
@@ -104,14 +106,14 @@ fun ResultsScreen(
 			verticalArrangement = Arrangement.spacedBy(16.dp),
 		) {
 			itemsIndexed(photos, key = { _, uri -> uri }) { index, uri ->
-				ResultCard(index = index, uri = uri)
+				ResultCard(index = index, uri = uri, onSave = { onSaveOne(uri) })
 			}
 		}
 	}
 }
 
 @Composable
-private fun ResultCard(index: Int, uri: Uri) {
+private fun ResultCard(index: Int, uri: Uri, onSave: () -> Unit) {
 	Box(
 		modifier = Modifier
 			.fillMaxWidth()
@@ -146,6 +148,22 @@ private fun ResultCard(index: Int, uri: Uri) {
 				style = MaterialTheme.typography.labelLarge,
 			)
 		}
+		IconButton(
+			onClick = onSave,
+			modifier = Modifier
+				.align(Alignment.TopEnd)
+				.padding(8.dp)
+				.size(36.dp)
+				.clip(RoundedCornerShape(18.dp))
+				.background(Color.Black.copy(alpha = 0.6f)),
+		) {
+			Icon(
+				imageVector = Icons.Filled.Save,
+				contentDescription = "Save photo ${index + 1}",
+				tint = Color.White,
+				modifier = Modifier.size(20.dp),
+			)
+		}
 	}
 }
 
@@ -157,7 +175,9 @@ fun ResultsScreenPreview() {
 			photos = emptyList(),
 			snackbarHostState = remember { SnackbarHostState() },
 			onSaveAll = {},
+			onSaveOne = {},
 			onBack = {},
+			onStartOver = {},
 		)
 	}
 }

@@ -58,7 +58,19 @@ class MainActivity : ComponentActivity() {
 										)
 									}
 								},
+								onSaveOne = { uri ->
+									scope.launch {
+										val result = viewModel.saveAll(listOf(uri))
+										val msg = if (result.saved == 1) {
+											"Saved to Pictures/InstagramCurator"
+										} else {
+											"Save failed"
+										}
+										snackbarHostState.showSnackbar(msg)
+									}
+								},
 								onBack = viewModel::resetPipeline,
+								onStartOver = viewModel::startOver,
 							)
 							is PipelineState.Done -> CandidatesScreen(
 								candidates = s.candidates,
