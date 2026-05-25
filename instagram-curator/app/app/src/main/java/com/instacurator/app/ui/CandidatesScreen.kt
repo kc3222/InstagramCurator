@@ -11,7 +11,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -55,7 +60,9 @@ fun CandidatesScreen(
 					contentScale = ContentScale.Crop,
 					modifier = Modifier.fillMaxSize(),
 				)
-				Box(
+				Row(
+					verticalAlignment = Alignment.CenterVertically,
+					horizontalArrangement = Arrangement.spacedBy(2.dp),
 					modifier = Modifier
 						.align(Alignment.BottomEnd)
 						.padding(4.dp)
@@ -63,6 +70,12 @@ fun CandidatesScreen(
 						.background(Color.Black.copy(alpha = 0.6f))
 						.padding(horizontal = 6.dp, vertical = 2.dp),
 				) {
+					Icon(
+						imageVector = Icons.Filled.Star,
+						contentDescription = null,
+						tint = Color(0xFFFFD54F),
+						modifier = Modifier.size(10.dp),
+					)
 					Text(
 						text = String.format("%.2f", candidate.compositeScore),
 						color = Color.White,
