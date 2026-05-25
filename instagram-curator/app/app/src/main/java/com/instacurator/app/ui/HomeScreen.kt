@@ -27,6 +27,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.runtime.Composable
@@ -62,10 +63,11 @@ fun HomeScreen(viewModel: MainViewModel = hiltViewModel()) {
 	val pickMediaLauncher = rememberLauncherForActivityResult(
 		ActivityResultContracts.PickMultipleVisualMedia()
 	) { uris ->
-		if (uris.size > MAX_PHOTOS) {
-			Toast.makeText(context, "Max 100 photos at a time", Toast.LENGTH_SHORT).show()
-		} else {
-			viewModel.setPickedUris(uris)
+		when {
+			uris.isEmpty() -> Unit // user cancelled — keep current selection
+			uris.size > MAX_PHOTOS ->
+				Toast.makeText(context, "Max 100 photos at a time", Toast.LENGTH_SHORT).show()
+			else -> viewModel.setPickedUris(uris)
 		}
 	}
 
@@ -85,6 +87,7 @@ fun HomeScreen(viewModel: MainViewModel = hiltViewModel()) {
 	HomeScreenContent(
 		selectedUris = viewModel.selectedUris,
 		pickCount = viewModel.pickCount,
+		useOpenAi = viewModel.useOpenAi,
 		onPickPhotos = {
 			pickMediaLauncher.launch(
 				PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
@@ -95,6 +98,7 @@ fun HomeScreen(viewModel: MainViewModel = hiltViewModel()) {
 		onDecrement = viewModel::decrementPickCount,
 		onPickCountChange = viewModel::updatePickCount,
 		onRemovePhoto = viewModel::removeUri,
+		onUseOpenAiChange = { viewModel.useOpenAi = it },
 		errorMessage = (pipelineState as? PipelineState.Error)?.msg,
 	)
 }
@@ -124,12 +128,14 @@ private fun PipelineProgress(stage: String, progress: Float) {
 fun HomeScreenContent(
 	selectedUris: List<Uri>,
 	pickCount: Int,
+	useOpenAi: Boolean,
 	onPickPhotos: () -> Unit,
 	onAnalyze: () -> Unit,
 	onIncrement: () -> Unit,
 	onDecrement: () -> Unit,
 	onPickCountChange: (Int) -> Unit,
 	onRemovePhoto: (Uri) -> Unit,
+	onUseOpenAiChange: (Boolean) -> Unit,
 	errorMessage: String? = null,
 ) {
 	var pickCountText by remember { mutableStateOf(pickCount.toString()) }
@@ -141,6 +147,8 @@ fun HomeScreenContent(
 	val parsedPickCount = pickCountText.toIntOrNull()
 	val pickCountValid = parsedPickCount != null &&
 		parsedPickCount in PICK_RANGE.first..PICK_RANGE.last
+	val tooFewPhotos = selectedUris.isNotEmpty() && pickCountValid &&
+		(parsedPickCount ?: 0) > selectedUris.size
 
 	Column(
 		modifier = Modifier
@@ -243,6 +251,21 @@ fun HomeScreenContent(
 			modifier = Modifier.padding(top = 4.dp),
 		)
 
+		Row(
+			verticalAlignment = Alignment.CenterVertically,
+			horizontalArrangement = Arrangement.spacedBy(8.dp),
+			modifier = Modifier.padding(top = 12.dp),
+		) {
+			Text(
+				text = if (useOpenAi) "Use OpenAI (local + AI)" else "Local filtering only",
+				style = MaterialTheme.typography.bodyMedium,
+			)
+			Switch(
+				checked = useOpenAi,
+				onCheckedChange = onUseOpenAiChange,
+			)
+		}
+
 		SelectedPhotosGrid(
 			uris = selectedUris,
 			onPhotoTap = onRemovePhoto,
@@ -251,6 +274,25 @@ fun HomeScreenContent(
 				.weight(1f)
 				.padding(vertical = 16.dp),
 		)
+
+		if (tooFewPhotos) {
+			Row(
+				verticalAlignment = Alignment.CenterVertically,
+				horizontalArrangement = Arrangement.spacedBy(6.dp),
+				modifier = Modifier.padding(bottom = 8.dp),
+			) {
+				Icon(
+					imageVector = Icons.Filled.ErrorOutline,
+					contentDescription = null,
+					tint = MaterialTheme.colorScheme.error,
+				)
+				Text(
+					text = "Pick at least $parsedPickCount photos (selected: ${selectedUris.size})",
+					color = MaterialTheme.colorScheme.error,
+					style = MaterialTheme.typography.bodySmall,
+				)
+			}
+		}
 
 		if (errorMessage != null) {
 			Row(
@@ -273,7 +315,7 @@ fun HomeScreenContent(
 
 		Button(
 			onClick = onAnalyze,
-			enabled = selectedUris.isNotEmpty() && pickCountValid,
+			enabled = selectedUris.isNotEmpty() && pickCountValid && !tooFewPhotos,
 			modifier = Modifier.fillMaxWidth(),
 		) {
 			Icon(
@@ -293,12 +335,14 @@ fun HomeScreenContentPreview() {
 		HomeScreenContent(
 			selectedUris = emptyList(),
 			pickCount = 6,
+			useOpenAi = true,
 			onPickPhotos = {},
 			onAnalyze = {},
 			onIncrement = {},
 			onDecrement = {},
 			onPickCountChange = {},
 			onRemovePhoto = {},
+			onUseOpenAiChange = {},
 		)
 	}
 }

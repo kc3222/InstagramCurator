@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -44,6 +45,9 @@ class MainViewModel @Inject constructor(
 	var pickCount by mutableIntStateOf(DEFAULT_PICK_COUNT)
 		private set
 
+	/** When false, skip the OpenAI round-trip and stop after local filtering. */
+	var useOpenAi by mutableStateOf(true)
+
 	private val _pipelineState = MutableStateFlow<PipelineState>(PipelineState.Idle)
 	val pipelineState: StateFlow<PipelineState> = _pipelineState.asStateFlow()
 
@@ -79,6 +83,14 @@ class MainViewModel @Inject constructor(
 				val candidates = processor.process(uris) { stage, p ->
 					_pipelineState.value = PipelineState.Running(stage, p)
 				}
+				if (!useOpenAi) {
+					val localUris = candidates
+						.sortedByDescending { it.compositeScore }
+						.take(pickCount)
+						.map { it.uri }
+					_pipelineState.value = PipelineState.FinalResult(localUris)
+					return@launch
+				}
 				val finalUris = processor.runAiPipeline(candidates, pickCount) { state ->
 					_pipelineState.value = state
 				}
@@ -91,6 +103,12 @@ class MainViewModel @Inject constructor(
 
 	fun resetPipeline() {
 		_pipelineState.value = PipelineState.Idle
+	}
+
+	/** Full reset: clear pipeline state and the picked photos. */
+	fun startOver() {
+		_pipelineState.value = PipelineState.Idle
+		_selectedUris.clear()
 	}
 
 	/** Save all photos to Pictures/InstagramCurator/. Called from the FAB. */
