@@ -147,6 +147,8 @@ fun HomeScreenContent(
 	val parsedPickCount = pickCountText.toIntOrNull()
 	val pickCountValid = parsedPickCount != null &&
 		parsedPickCount in PICK_RANGE.first..PICK_RANGE.last
+	val tooFewPhotos = selectedUris.isNotEmpty() && pickCountValid &&
+		(parsedPickCount ?: 0) > selectedUris.size
 
 	Column(
 		modifier = Modifier
@@ -273,6 +275,25 @@ fun HomeScreenContent(
 				.padding(vertical = 16.dp),
 		)
 
+		if (tooFewPhotos) {
+			Row(
+				verticalAlignment = Alignment.CenterVertically,
+				horizontalArrangement = Arrangement.spacedBy(6.dp),
+				modifier = Modifier.padding(bottom = 8.dp),
+			) {
+				Icon(
+					imageVector = Icons.Filled.ErrorOutline,
+					contentDescription = null,
+					tint = MaterialTheme.colorScheme.error,
+				)
+				Text(
+					text = "Pick at least $parsedPickCount photos (selected: ${selectedUris.size})",
+					color = MaterialTheme.colorScheme.error,
+					style = MaterialTheme.typography.bodySmall,
+				)
+			}
+		}
+
 		if (errorMessage != null) {
 			Row(
 				verticalAlignment = Alignment.CenterVertically,
@@ -294,7 +315,7 @@ fun HomeScreenContent(
 
 		Button(
 			onClick = onAnalyze,
-			enabled = selectedUris.isNotEmpty() && pickCountValid,
+			enabled = selectedUris.isNotEmpty() && pickCountValid && !tooFewPhotos,
 			modifier = Modifier.fillMaxWidth(),
 		) {
 			Icon(
